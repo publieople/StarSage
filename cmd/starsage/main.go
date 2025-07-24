@@ -14,7 +14,7 @@ var rootCmd = &cobra.Command{
 	Use:   "starsage",
 	Short: "StarSage is a tool to manage your GitHub Stars.",
 	Long: `A Fast and Flexible CLI for managing, searching, and summarizing your GitHub Stars.
-Complete documentation is available at https://github.com/user/repo`, // Placeholder URL
+Complete documentation is available at https://github.com/publieople/StarSage`, // Placeholder URL
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		return config.InitConfig()
 	},

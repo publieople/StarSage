@@ -28,6 +28,15 @@ go.work.sum
 # env file
 .env
 
+# StarSage specific
+#
+# Local database file
+*.db
+# Exported static site
+/site/
+# Local config file
+config.yaml
+
 # Editor/IDE
 # .idea/
 # .vscode/
