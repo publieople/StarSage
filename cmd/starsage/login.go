@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"star-sage/internal/config"
 	"star-sage/internal/gh"
 )
 
@@ -21,8 +22,12 @@ var loginCmd = &cobra.Command{
 			return
 		}
 
-		fmt.Printf("Successfully authenticated! Token: %s\n", token)
-		// TODO: Save the token to a config file
+		if err := config.SaveToken(token); err != nil {
+			fmt.Printf("Error saving token: %v\n", err)
+			return
+		}
+
+		fmt.Println("Successfully authenticated and token saved.")
 	},
 }
 

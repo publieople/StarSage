@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"star-sage/internal/config"
 )
 
 var proxyURL string
@@ -14,6 +15,9 @@ var rootCmd = &cobra.Command{
 	Short: "StarSage is a tool to manage your GitHub Stars.",
 	Long: `A Fast and Flexible CLI for managing, searching, and summarizing your GitHub Stars.
 Complete documentation is available at https://github.com/user/repo`, // Placeholder URL
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		return config.InitConfig()
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		// Default action when no subcommand is given
 		cmd.Help()
