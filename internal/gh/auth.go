@@ -39,7 +39,8 @@ type AccessTokenResponse struct {
 
 // PerformDeviceFlow handles the entire GitHub OAuth Device Flow.
 func PerformDeviceFlow(ctx context.Context, proxyAddr string) (string, error) {
-	client, err := NewClient(proxyAddr)
+	// The client for device flow does not need an auth token.
+	client, err := NewClient(proxyAddr, "")
 	if err != nil {
 		return "", fmt.Errorf("failed to create http client: %w", err)
 	}
