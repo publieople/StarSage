@@ -30,7 +30,7 @@ It supports incremental syncs to fetch only the new stars.`,
 			return
 		}
 
-		fmt.Printf("Found %d starred repositories. Saving to database...\n", len(repos))
+		fmt.Printf("Found %d starred repositories. Fetching READMEs and saving to database...\n", len(repos))
 
 		database, err := db.InitDB()
 		if err != nil {
@@ -39,9 +39,36 @@ It supports incremental syncs to fetch only the new stars.`,
 		}
 		defer database.Close()
 
-		if err := db.SaveRepositories(database, repos); err != nil {
-			fmt.Printf("Error saving repositories to database: %v\n", err)
+		// We need a client to fetch READMEs
+		client, err := gh.NewClient(proxyURL, token)
+		if err != nil {
+			fmt.Printf("Error creating GitHub client: %v\n", err)
 			return
+		}
+
+		for i, repo := range repos {
+			fmt.Printf("[%d/%d] Syncing %s...\n", i+1, len(repos), repo.FullName)
+
+			readmeContent, err := gh.GetReadme(context.Background(), client, repo.FullName)
+			if err != nil {
+				fmt.Printf("Could not get README for %s: %v. Skipping.\n", repo.FullName, err)
+				// still save the repo metadata even if README fails
+			}
+
+			dbRepo := db.Repository{
+				ID:              repo.ID,
+				FullName:        repo.FullName,
+				Description:     repo.Description,
+				URL:             repo.HTMLURL,
+				Language:        repo.Language,
+				StargazersCount: repo.StargazersCount,
+				ReadmeContent:   readmeContent,
+			}
+
+			if err := db.UpsertRepository(database, dbRepo); err != nil {
+				fmt.Printf("Error saving repository %s to database: %v\n", repo.FullName, err)
+				// Decide if we should continue or stop. For now, let's continue.
+			}
 		}
 
 		fmt.Println("Successfully synced and saved repositories to the local database.")

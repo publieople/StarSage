@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"encoding/base64"
 	"regexp"
 	"strings"
 	"time"
@@ -57,6 +58,63 @@ type GHRepo struct {
 	HTMLURL         string `json:"html_url"`
 	Language        string `json:"language"`
 	StargazersCount int    `json:"stargazers_count"`
+}
+
+// GHReadme represents the response for a README file from the GitHub API.
+type GHReadme struct {
+	Content  string `json:"content"`
+	Encoding string `json:"encoding"`
+}
+
+// GetReadme fetches the README content for a single repository.
+func GetReadme(ctx context.Context, client *http.Client, fullName string) (string, error) {
+	readmeURL := fmt.Sprintf("https://api.github.com/repos/%s/readme", fullName)
+	var req *http.Request
+	var err error
+	req, err = http.NewRequestWithContext(ctx, "GET", readmeURL, nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Accept", "application/vnd.github.v3+json")
+
+	var resp *http.Response
+	const maxRetries = 3
+	for i := 0; i < maxRetries; i++ {
+		resp, err = client.Do(req)
+		if err == nil {
+			break
+		}
+		// Don't print retry message for READMEs to avoid spamming the console.
+		time.Sleep(1 * time.Second)
+	}
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		// It's common for repos to not have a README, so we treat 404 as non-fatal.
+		if resp.StatusCode == http.StatusNotFound {
+			return "", nil // No README, not an error.
+		}
+		return "", fmt.Errorf("failed to get readme for %s: %s", fullName, resp.Status)
+	}
+
+	var readme GHReadme
+	if err := json.NewDecoder(resp.Body).Decode(&readme); err != nil {
+		return "", err
+	}
+
+	if readme.Encoding != "base64" {
+		return "", fmt.Errorf("unknown readme encoding: %s", readme.Encoding)
+	}
+
+	decodedContent, err := base64.StdEncoding.DecodeString(readme.Content)
+	if err != nil {
+		return "", fmt.Errorf("could not decode readme content: %w", err)
+	}
+
+	return string(decodedContent), nil
 }
 
 // GetStarredRepos fetches all starred repositories for the authenticated user.

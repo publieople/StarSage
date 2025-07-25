@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"star-sage/internal/gh"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -64,24 +63,18 @@ func createTables(db *sql.DB) error {
 	return err
 }
 
-// SaveRepositories saves a slice of repositories to the database.
-// It uses a transaction for efficiency and data integrity.
-func SaveRepositories(db *sql.DB, repos []gh.GHRepo) error {
-	tx, err := db.Begin()
-	if err != nil {
-		return fmt.Errorf("could not begin transaction: %w", err)
-	}
-	defer tx.Rollback() // Rollback on error
-
-	stmt, err := tx.Prepare(`
-		INSERT INTO repositories (id, full_name, description, url, language, stargazers_count, last_synced_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?)
+// UpsertRepository inserts or updates a single repository in the database.
+func UpsertRepository(db *sql.DB, repo Repository) error {
+	stmt, err := db.Prepare(`
+		INSERT INTO repositories (id, full_name, description, url, language, stargazers_count, readme_content, last_synced_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
 			full_name=excluded.full_name,
 			description=excluded.description,
 			url=excluded.url,
 			language=excluded.language,
 			stargazers_count=excluded.stargazers_count,
+			readme_content=excluded.readme_content,
 			last_synced_at=excluded.last_synced_at;
 	`)
 	if err != nil {
@@ -89,20 +82,56 @@ func SaveRepositories(db *sql.DB, repos []gh.GHRepo) error {
 	}
 	defer stmt.Close()
 
-	for _, repo := range repos {
-		_, err := stmt.Exec(
-			repo.ID,
-			repo.FullName,
-			repo.Description,
-			repo.HTMLURL,
-			repo.Language,
-			repo.StargazersCount,
-			time.Now(),
-		)
-		if err != nil {
-			return fmt.Errorf("could not execute statement for repo %s: %w", repo.FullName, err)
-		}
+	_, err = stmt.Exec(
+		repo.ID,
+		repo.FullName,
+		repo.Description,
+		repo.URL,
+		repo.Language,
+		repo.StargazersCount,
+		repo.ReadmeContent,
+		time.Now(),
+	)
+	if err != nil {
+		return fmt.Errorf("could not execute statement for repo %s: %w", repo.FullName, err)
 	}
 
-	return tx.Commit()
+	return nil
+}
+
+// GetReposForSummarization retrieves repositories that have a README but no summary.
+func GetReposForSummarization(db *sql.DB, limit int) ([]Repository, error) {
+	query := `
+		SELECT id, full_name, readme_content
+		FROM repositories
+		WHERE readme_content IS NOT NULL AND readme_content != ''
+		AND (summary IS NULL OR summary = '')
+		LIMIT ?;
+	`
+	rows, err := db.Query(query, limit)
+	if err != nil {
+		return nil, fmt.Errorf("could not query repos for summarization: %w", err)
+	}
+	defer rows.Close()
+
+	var repos []Repository
+	for rows.Next() {
+		var repo Repository
+		if err := rows.Scan(&repo.ID, &repo.FullName, &repo.ReadmeContent); err != nil {
+			return nil, fmt.Errorf("could not scan repo row: %w", err)
+		}
+		repos = append(repos, repo)
+	}
+
+	return repos, nil
+}
+
+// UpdateRepoSummary updates the summary for a given repository.
+func UpdateRepoSummary(db *sql.DB, repoID int64, summary string) error {
+	query := `UPDATE repositories SET summary = ? WHERE id = ?;`
+	_, err := db.Exec(query, summary, repoID)
+	if err != nil {
+		return fmt.Errorf("could not update summary for repo %d: %w", repoID, err)
+	}
+	return nil
 }
