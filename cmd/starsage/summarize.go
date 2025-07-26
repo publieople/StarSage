@@ -32,8 +32,13 @@ and saves the summary back to the database.`,
 		}
 		defer database.Close()
 
-		// For now, let's just summarize 5 repos at a time.
-		repos, err := db.GetReposForSummarization(database, 5)
+		summarizeLimit := limit
+		if summarizeLimit == 0 {
+			summarizeLimit = 5 // Default to 5 if no limit is set
+		}
+		fmt.Printf("Attempting to summarize up to %d repositories...\n", summarizeLimit)
+
+		repos, err := db.GetReposForSummarization(database, summarizeLimit)
 		if err != nil {
 			fmt.Printf("Error getting repositories to summarize: %v\n", err)
 			return

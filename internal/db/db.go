@@ -46,7 +46,8 @@ func InitDB() (*sql.DB, error) {
 }
 
 func createTables(db *sql.DB) error {
-	const createTableSQL = `
+	// Main table for repository data
+	const createRepoTableSQL = `
 	CREATE TABLE IF NOT EXISTS repositories (
 		id INTEGER NOT NULL PRIMARY KEY,
 		full_name TEXT NOT NULL UNIQUE,
@@ -59,8 +60,51 @@ func createTables(db *sql.DB) error {
 		last_synced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	);`
 
-	_, err := db.Exec(createTableSQL)
-	return err
+	// FTS5 virtual table for full-text search
+	const createFtsTableSQL = `
+	CREATE VIRTUAL TABLE IF NOT EXISTS repos_fts USING fts5(
+		full_name,
+		description,
+		readme_content,
+		content='repositories',
+		content_rowid='id'
+	);`
+
+	// Triggers to keep the FTS table in sync with the repositories table
+	const createTriggersSQL = `
+	CREATE TRIGGER IF NOT EXISTS repos_ai AFTER INSERT ON repositories BEGIN
+		INSERT INTO repos_fts(rowid, full_name, description, readme_content)
+		VALUES (new.id, new.full_name, new.description, new.readme_content);
+	END;
+	CREATE TRIGGER IF NOT EXISTS repos_ad AFTER DELETE ON repositories BEGIN
+		INSERT INTO repos_fts(repos_fts, rowid, full_name, description, readme_content)
+		VALUES ('delete', old.id, old.full_name, old.description, old.readme_content);
+	END;
+	CREATE TRIGGER IF NOT EXISTS repos_au AFTER UPDATE ON repositories BEGIN
+		INSERT INTO repos_fts(repos_fts, rowid, full_name, description, readme_content)
+		VALUES ('delete', old.id, old.full_name, old.description, old.readme_content);
+		INSERT INTO repos_fts(rowid, full_name, description, readme_content)
+		VALUES (new.id, new.full_name, new.description, new.readme_content);
+	END;
+	`
+
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.Exec(createRepoTableSQL); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(createFtsTableSQL); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(createTriggersSQL); err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
 
 // UpsertRepository inserts or updates a single repository in the database.
@@ -134,4 +178,68 @@ func UpdateRepoSummary(db *sql.DB, repoID int64, summary string) error {
 		return fmt.Errorf("could not update summary for repo %d: %w", repoID, err)
 	}
 	return nil
+}
+
+// SearchRepositories performs a full-text search on the repositories.
+func SearchRepositories(db *sql.DB, query string, limit int) ([]Repository, error) {
+	// The snippet function highlights the search terms in the results.
+	// The bm25 function provides relevancy ranking.
+	searchSQL := `
+		SELECT
+			r.id,
+			r.full_name,
+			r.description,
+			r.url,
+			r.language,
+			r.stargazers_count,
+			r.summary,
+			snippet(repos_fts, 1, '<b>', '</b>', '...', 15) as desc_snippet,
+			bm25(repos_fts) as rank
+		FROM repositories r
+		JOIN repos_fts ON r.id = repos_fts.rowid
+		WHERE repos_fts MATCH ?
+		ORDER BY rank
+	`
+	var args []interface{}
+	args = append(args, query)
+
+	if limit > 0 {
+		searchSQL += " LIMIT ?;"
+		args = append(args, limit)
+	} else {
+		searchSQL += ";"
+	}
+
+	rows, err := db.Query(searchSQL, args...)
+	if err != nil {
+		return nil, fmt.Errorf("could not execute search query: %w", err)
+	}
+	defer rows.Close()
+
+	var repos []Repository
+	for rows.Next() {
+		var repo Repository
+		var descSnippet sql.NullString // Use NullString for snippet which might be null
+		var rank float64
+		if err := rows.Scan(
+			&repo.ID,
+			&repo.FullName,
+			&repo.Description,
+			&repo.URL,
+			&repo.Language,
+			&repo.StargazersCount,
+			&repo.Summary,
+			&descSnippet,
+			&rank,
+		); err != nil {
+			return nil, fmt.Errorf("could not scan search result row: %w", err)
+		}
+		// If the original description was empty, we can use the snippet as a fallback.
+		if repo.Description == "" && descSnippet.Valid {
+			repo.Description = descSnippet.String
+		}
+		repos = append(repos, repo)
+	}
+
+	return repos, nil
 }

@@ -24,7 +24,7 @@ It supports incremental syncs to fetch only the new stars.`,
 		}
 
 		fmt.Println("Syncing GitHub Stars...")
-		repos, err := gh.GetStarredRepos(context.Background(), token, proxyURL)
+		repos, err := gh.GetStarredRepos(context.Background(), token, proxyURL, limit)
 		if err != nil {
 			fmt.Printf("Error syncing stars: %v\n", err)
 			return

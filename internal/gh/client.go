@@ -117,15 +117,16 @@ func GetReadme(ctx context.Context, client *http.Client, fullName string) (strin
 	return string(decodedContent), nil
 }
 
-// GetStarredRepos fetches all starred repositories for the authenticated user.
-func GetStarredRepos(ctx context.Context, token, proxyAddr string) ([]GHRepo, error) {
+// GetStarredRepos fetches starred repositories for the authenticated user, up to a given limit.
+func GetStarredRepos(ctx context.Context, token, proxyAddr string, limit int) ([]GHRepo, error) {
 	client, err := NewClient(proxyAddr, token)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create http client: %w", err)
 	}
 
 	var allRepos []GHRepo
-	nextURL := "https://api.github.com/user/starred"
+	// We can fetch up to 100 per page.
+	nextURL := "https://api.github.com/user/starred?per_page=100"
 
 	for nextURL != "" {
 		var req *http.Request
@@ -162,6 +163,12 @@ func GetStarredRepos(ctx context.Context, token, proxyAddr string) ([]GHRepo, er
 		resp.Body.Close()
 
 		allRepos = append(allRepos, repos...)
+
+		if limit > 0 && len(allRepos) >= limit {
+			// Trim excess repos if we fetched more than the limit on the last page
+			allRepos = allRepos[:limit]
+			break
+		}
 
 		// Handle pagination
 		linkHeader := resp.Header.Get("Link")

@@ -8,7 +8,10 @@ import (
 	"star-sage/internal/config"
 )
 
-var proxyURL string
+var (
+	proxyURL string
+	limit    int
+)
 
 var rootCmd = &cobra.Command{
 	Use:   "starsage",
@@ -33,6 +36,7 @@ func Execute() {
 
 func init() {
 	rootCmd.PersistentFlags().StringVar(&proxyURL, "proxy", "", "HTTP proxy to use for network requests (e.g. http://127.0.0.1:7890)")
+	rootCmd.PersistentFlags().IntVar(&limit, "limit", 0, "Limit the number of items to process (0 for no limit)")
 }
 
 func main() {
