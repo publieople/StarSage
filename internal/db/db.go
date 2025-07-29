@@ -219,7 +219,8 @@ func SearchRepositories(db *sql.DB, query string, limit int) ([]Repository, erro
 	var repos []Repository
 	for rows.Next() {
 		var repo Repository
-		var descSnippet sql.NullString // Use NullString for snippet which might be null
+		var summary sql.NullString
+		var descSnippet sql.NullString
 		var rank float64
 		if err := rows.Scan(
 			&repo.ID,
@@ -228,11 +229,14 @@ func SearchRepositories(db *sql.DB, query string, limit int) ([]Repository, erro
 			&repo.URL,
 			&repo.Language,
 			&repo.StargazersCount,
-			&repo.Summary,
+			&summary,
 			&descSnippet,
 			&rank,
 		); err != nil {
 			return nil, fmt.Errorf("could not scan search result row: %w", err)
+		}
+		if summary.Valid {
+			repo.Summary = summary.String
 		}
 		// If the original description was empty, we can use the snippet as a fallback.
 		if repo.Description == "" && descSnippet.Valid {
