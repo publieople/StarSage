@@ -12,6 +12,7 @@
 - **全量同步**: 一键同步您所有的 GitHub Stars，包括项目元数据和 `README` 文件。
 - **AI 摘要**: 使用本地或远程 AI 模型（当前支持 Ollama）为项目 `README` 生成精炼摘要。
 - **全文搜索**: 基于 SQLite FTS5 的高性能全文搜索，快速在名称、描述和 `README` 中找到您需要的项目。
+- **Web 用户界面**: 通过 `serve` 命令启动一个本地 Web 服务器，提供一个简洁的界面来浏览和搜索您的 Stars。
 - **代理支持**: 内置 `--proxy` 标志，轻松应对各种网络环境。
 
 ## 🚀 安装与使用
@@ -89,6 +90,17 @@ go run ./cmd/starsage search data visualization
 # 限制返回结果数量
 go run ./cmd/starsage search "data visualization" --limit 5
 ```
+
+**e. 启动 Web 界面**
+
+```bash
+# 启动服务器 (默认端口 8080)
+go run ./cmd/starsage serve
+
+# 使用指定端口
+go run ./cmd/starsage serve --port 9090
+```
+然后，您可以在浏览器中打开 `http://localhost:8080` (或您指定的端口) 来访问 Web 界面。
 
 ## 🛠️ 未来计划
 
