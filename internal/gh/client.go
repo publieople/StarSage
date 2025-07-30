@@ -67,15 +67,18 @@ type GHReadme struct {
 }
 
 // GetReadme fetches the README content for a single repository.
-func GetReadme(ctx context.Context, client *http.Client, fullName string) (string, error) {
+// It uses an ETag to avoid re-downloading unchanged content.
+// It returns the new content, the new ETag, and an error.
+func GetReadme(ctx context.Context, client *http.Client, fullName, etag string) (string, string, error) {
 	readmeURL := fmt.Sprintf("https://api.github.com/repos/%s/readme", fullName)
-	var req *http.Request
-	var err error
-	req, err = http.NewRequestWithContext(ctx, "GET", readmeURL, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", readmeURL, nil)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	req.Header.Set("Accept", "application/vnd.github.v3+json")
+	if etag != "" {
+		req.Header.Set("If-None-Match", etag)
+	}
 
 	var resp *http.Response
 	const maxRetries = 3
@@ -84,37 +87,44 @@ func GetReadme(ctx context.Context, client *http.Client, fullName string) (strin
 		if err == nil {
 			break
 		}
-		// Don't print retry message for READMEs to avoid spamming the console.
 		time.Sleep(1 * time.Second)
 	}
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		// It's common for repos to not have a README, so we treat 404 as non-fatal.
-		if resp.StatusCode == http.StatusNotFound {
-			return "", nil // No README, not an error.
-		}
-		return "", fmt.Errorf("failed to get readme for %s: %s", fullName, resp.Status)
+	// If ETag matches, content is unchanged.
+	if resp.StatusCode == http.StatusNotModified {
+		return "", etag, nil // Content is the same, return original etag.
 	}
+
+	// It's common for repos to not have a README, so we treat 404 as non-fatal.
+	if resp.StatusCode == http.StatusNotFound {
+		return "", "", nil // No README, not an error.
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return "", "", fmt.Errorf("failed to get readme for %s: %s", fullName, resp.Status)
+	}
+
+	newEtag := resp.Header.Get("ETag")
 
 	var readme GHReadme
 	if err := json.NewDecoder(resp.Body).Decode(&readme); err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	if readme.Encoding != "base64" {
-		return "", fmt.Errorf("unknown readme encoding: %s", readme.Encoding)
+		return "", "", fmt.Errorf("unknown readme encoding: %s", readme.Encoding)
 	}
 
 	decodedContent, err := base64.StdEncoding.DecodeString(readme.Content)
 	if err != nil {
-		return "", fmt.Errorf("could not decode readme content: %w", err)
+		return "", "", fmt.Errorf("could not decode readme content: %w", err)
 	}
 
-	return string(decodedContent), nil
+	return string(decodedContent), newEtag, nil
 }
 
 // GetStarredRepos fetches starred repositories for the authenticated user, up to a given limit.

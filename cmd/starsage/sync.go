@@ -46,13 +46,25 @@ It supports incremental syncs to fetch only the new stars.`,
 			return
 		}
 
+		// Pre-fetch existing etags to avoid querying the DB in a loop
+		existingRepos, err := db.GetAllReposWithETags(database)
+		if err != nil {
+			fmt.Printf("Warning: could not pre-fetch existing repo data: %v\n", err)
+		}
+		etagMap := make(map[int64]string)
+		readmeMap := make(map[int64]string)
+		for _, r := range existingRepos {
+			etagMap[r.ID] = r.ETag
+			readmeMap[r.ID] = r.ReadmeContent
+		}
+
 		for i, repo := range repos {
 			fmt.Printf("[%d/%d] Syncing %s...\n", i+1, len(repos), repo.FullName)
 
-			readmeContent, err := gh.GetReadme(context.Background(), client, repo.FullName)
+			currentEtag := etagMap[repo.ID]
+			readmeContent, newEtag, err := gh.GetReadme(context.Background(), client, repo.FullName, currentEtag)
 			if err != nil {
 				fmt.Printf("Could not get README for %s: %v. Skipping.\n", repo.FullName, err)
-				// still save the repo metadata even if README fails
 			}
 
 			dbRepo := db.Repository{
@@ -62,12 +74,18 @@ It supports incremental syncs to fetch only the new stars.`,
 				URL:             repo.HTMLURL,
 				Language:        repo.Language,
 				StargazersCount: repo.StargazersCount,
-				ReadmeContent:   readmeContent,
+				ETag:            newEtag,
+			}
+
+			// If README was not modified, use the old content from the map.
+			if newEtag == currentEtag && currentEtag != "" {
+				dbRepo.ReadmeContent = readmeMap[repo.ID]
+			} else {
+				dbRepo.ReadmeContent = readmeContent
 			}
 
 			if err := db.UpsertRepository(database, dbRepo); err != nil {
 				fmt.Printf("Error saving repository %s to database: %v\n", repo.FullName, err)
-				// Decide if we should continue or stop. For now, let's continue.
 			}
 		}
 

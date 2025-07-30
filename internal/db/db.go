@@ -22,6 +22,7 @@ type Repository struct {
 	StargazersCount int
 	ReadmeContent   string
 	Summary         string
+	ETag            string
 	LastSyncedAt    string
 }
 
@@ -57,6 +58,7 @@ func createTables(db *sql.DB) error {
 		stargazers_count INTEGER,
 		readme_content TEXT,
 		summary TEXT,
+		etag TEXT,
 		last_synced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	);`
 
@@ -110,8 +112,8 @@ func createTables(db *sql.DB) error {
 // UpsertRepository inserts or updates a single repository in the database.
 func UpsertRepository(db *sql.DB, repo Repository) error {
 	stmt, err := db.Prepare(`
-		INSERT INTO repositories (id, full_name, description, url, language, stargazers_count, readme_content, last_synced_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO repositories (id, full_name, description, url, language, stargazers_count, readme_content, etag, last_synced_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
 			full_name=excluded.full_name,
 			description=excluded.description,
@@ -119,6 +121,7 @@ func UpsertRepository(db *sql.DB, repo Repository) error {
 			language=excluded.language,
 			stargazers_count=excluded.stargazers_count,
 			readme_content=excluded.readme_content,
+			etag=excluded.etag,
 			last_synced_at=excluded.last_synced_at;
 	`)
 	if err != nil {
@@ -134,6 +137,7 @@ func UpsertRepository(db *sql.DB, repo Repository) error {
 		repo.Language,
 		repo.StargazersCount,
 		repo.ReadmeContent,
+		repo.ETag,
 		time.Now(),
 	)
 	if err != nil {
@@ -141,6 +145,35 @@ func UpsertRepository(db *sql.DB, repo Repository) error {
 	}
 
 	return nil
+}
+
+// GetAllReposWithETags retrieves all repositories with their ID, ETag, and ReadmeContent.
+func GetAllReposWithETags(db *sql.DB) ([]Repository, error) {
+	query := `SELECT id, etag, readme_content FROM repositories;`
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("could not query repos for etags: %w", err)
+	}
+	defer rows.Close()
+
+	var repos []Repository
+	for rows.Next() {
+		var repo Repository
+		var etag sql.NullString
+		var readme sql.NullString
+		if err := rows.Scan(&repo.ID, &etag, &readme); err != nil {
+			return nil, fmt.Errorf("could not scan repo etag row: %w", err)
+		}
+		if etag.Valid {
+			repo.ETag = etag.String
+		}
+		if readme.Valid {
+			repo.ReadmeContent = readme.String
+		}
+		repos = append(repos, repo)
+	}
+
+	return repos, nil
 }
 
 // GetReposForSummarization retrieves repositories that have a README but no summary.
@@ -184,15 +217,16 @@ func UpdateRepoSummary(db *sql.DB, repoID int64, summary string) error {
 func SearchRepositories(db *sql.DB, query string, limit int) ([]Repository, error) {
 	// The snippet function highlights the search terms in the results.
 	// The bm25 function provides relevancy ranking.
+	// Use COALESCE to handle NULL summary values gracefully.
 	searchSQL := `
 		SELECT
 			r.id,
 			r.full_name,
-			r.description,
+			COALESCE(r.description, ''),
 			r.url,
 			r.language,
 			r.stargazers_count,
-			r.summary,
+			COALESCE(r.summary, ''),
 			snippet(repos_fts, 1, '<b>', '</b>', '...', 15) as desc_snippet,
 			bm25(repos_fts) as rank
 		FROM repositories r
@@ -219,8 +253,7 @@ func SearchRepositories(db *sql.DB, query string, limit int) ([]Repository, erro
 	var repos []Repository
 	for rows.Next() {
 		var repo Repository
-		var summary sql.NullString
-		var descSnippet sql.NullString
+		var descSnippet string
 		var rank float64
 		if err := rows.Scan(
 			&repo.ID,
@@ -229,18 +262,15 @@ func SearchRepositories(db *sql.DB, query string, limit int) ([]Repository, erro
 			&repo.URL,
 			&repo.Language,
 			&repo.StargazersCount,
-			&summary,
+			&repo.Summary,
 			&descSnippet,
 			&rank,
 		); err != nil {
 			return nil, fmt.Errorf("could not scan search result row: %w", err)
 		}
-		if summary.Valid {
-			repo.Summary = summary.String
-		}
 		// If the original description was empty, we can use the snippet as a fallback.
-		if repo.Description == "" && descSnippet.Valid {
-			repo.Description = descSnippet.String
+		if repo.Description == "" {
+			repo.Description = descSnippet
 		}
 		repos = append(repos, repo)
 	}
