@@ -203,6 +203,44 @@ func GetReposForSummarization(db *sql.DB, limit int) ([]Repository, error) {
 	return repos, nil
 }
 
+// GetAllRepositories retrieves all repositories from the database.
+func GetAllRepositories(db *sql.DB) ([]Repository, error) {
+	query := `
+		SELECT id, full_name, description, url, language, stargazers_count, summary, etag
+		FROM repositories
+		ORDER BY stargazers_count DESC;
+	`
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("could not query all repos: %w", err)
+	}
+	defer rows.Close()
+
+	var repos []Repository
+	for rows.Next() {
+		var repo Repository
+		var desc, summary, etag sql.NullString
+		if err := rows.Scan(
+			&repo.ID,
+			&repo.FullName,
+			&desc,
+			&repo.URL,
+			&repo.Language,
+			&repo.StargazersCount,
+			&summary,
+			&etag,
+		); err != nil {
+			return nil, fmt.Errorf("could not scan repo row: %w", err)
+		}
+		repo.Description = desc.String
+		repo.Summary = summary.String
+		repo.ETag = etag.String
+		repos = append(repos, repo)
+	}
+
+	return repos, nil
+}
+
 // UpdateRepoSummary updates the summary for a given repository.
 func UpdateRepoSummary(db *sql.DB, repoID int64, summary string) error {
 	query := `UPDATE repositories SET summary = ? WHERE id = ?;`

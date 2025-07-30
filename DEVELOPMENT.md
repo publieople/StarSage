@@ -128,6 +128,22 @@ StarSage 是一个轻量级、功能强大的 GitHub Stars 整理和分析工具
 
 ## 5. 后续开发计划 (MVP)
 
+- **`serve` 命令 (Web UI)**:
+  - **目标**: 提供一个本地 Web 界面，用于浏览、搜索、更新和删除已同步的仓库。
+  - **后端 (Go)**:
+    - 创建 `serve` 子命令，启动一个本地 HTTP 服务器。
+    - 实现 RESTful API，提供对仓库数据的 CRUD 操作。
+      - `GET /api/repositories`: 获取所有仓库列表（支持分页和搜索）。
+      - `GET /api/repositories/:id`: 获取单个仓库的详细信息。
+      - `PUT /api/repositories/:id`: 更新仓库信息（例如，手动编辑摘要）。
+      - `DELETE /api/torepositories/:id`: 从数据库中删除一个仓库。
+    - 服务器应能托管静态前端文件 (HTML, CSS, JS)。
+  - **前端 (HTML/CSS/JS)**:
+    - 创建一个简洁的单页应用 (SPA)。
+    - 页面加载时，通过 API 获取并显示仓库列表。
+    - 实现搜索框，实时调用后端搜索 API。
+    - 实现查看详情、编辑和删除功能。
+
 - **`export` 命令**:
 
   - 实现将数据库内容导出为 Markdown 或静态 HTML 网站。
