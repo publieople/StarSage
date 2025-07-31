@@ -12,7 +12,8 @@
 - **全量同步**: 一键同步您所有的 GitHub Stars，包括项目元数据和 `README` 文件。
 - **AI 摘要**: 使用本地或远程 AI 模型（当前支持 Ollama）为项目 `README` 生成精炼摘要。
 - **全文搜索**: 基于 SQLite FTS5 的高性能全文搜索，快速在名称、描述和 `README` 中找到您需要的项目。
-- **Web 用户界面**: 通过 `serve` 命令启动一个本地 Web 服务器，提供一个简洁的界面来浏览和搜索您的 Stars。
+- **智能列表 (AI Lists)**: 在 Web 界面中，通过自然语言指令（例如“所有关于数据可视化的库”）创建智能列表，AI 会自动为您分类和组织项目。
+- **Web 用户界面**: 通过 `serve` 命令启动一个本地 Web 服务器，提供一个简洁的界面来浏览、搜索和管理您的 Stars。
 - **代理支持**: 内置 `--proxy` 标志，轻松应对各种网络环境。
 
 ## 🚀 安装与使用
@@ -91,7 +92,7 @@ go run ./cmd/starsage search data visualization
 go run ./cmd/starsage search "data visualization" --limit 5
 ```
 
-**e. 启动 Web 界面**
+e. 启动 Web 界面
 
 ```bash
 # 启动服务器 (默认端口 8080)
@@ -100,12 +101,15 @@ go run ./cmd/starsage serve
 # 使用指定端口
 go run ./cmd/starsage serve --port 9090
 ```
-然后，您可以在浏览器中打开 `http://localhost:8080` (或您指定的端口) 来访问 Web 界面。
+
+然后，您可以在浏览器中打开 `http://localhost:8080` (或您指定的端口) 来访问 Web 界面。在 Web 界面中，您可以：
+
+- 浏览和搜索所有已同步的仓库。
+- 切换到“AI 列表”视图，创建和查看由 AI 自动分类的项目列表。
 
 ## 🛠️ 未来计划
 
 - **`export` 命令**: 实现将数据库内容导出为 Markdown 或静态 HTML 网站。
-- **增量同步**: 完善 `sync` 命令，实现基于 `ETag` 的增量同步，提高效率。
 - **更多 AI 支持**: 增加对 OpenAI、Gemini 等更多 AI 提供商的支持。
 
 ## 🤝 贡献

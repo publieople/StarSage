@@ -7,15 +7,58 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <h1>StarSage Repositories</h1>
-        <div class="search-container">
-            <input type="text" id="search-box" placeholder="Search repositories...">
+    <header>
+        <div class="container">
+            <h1>StarSage</h1>
+            <nav>
+                <a href="#" id="nav-repos" class="active">All Repositories</a>
+                <a href="#" id="nav-lists">AI Lists</a>
+            </nav>
         </div>
-        <div id="repo-list" class="repo-list">
-            <!-- Repositories will be loaded here -->
+    </header>
+
+    <div class="container">
+        <!-- View for all repositories -->
+        <section id="repositories-view">
+            <div class="search-container">
+                <input type="text" id="search-box" placeholder="Search repositories...">
+            </div>
+            <div id="repo-list" class="repo-list">
+                <!-- Repositories will be loaded here -->
+            </div>
+        </section>
+
+        <!-- View for AI-generated lists -->
+        <section id="lists-view" class="hidden">
+            <div class="list-header">
+                <h2>AI-Generated Lists</h2>
+                <button id="create-list-btn" class="btn">Create New List</button>
+            </div>
+            <div id="ai-lists-container" class="repo-list">
+                <!-- AI Lists will be loaded here -->
+            </div>
+        </section>
+    </div>
+
+    <!-- Modal for creating a new list -->
+    <div id="create-list-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2>Create a New AI-Powered List</h2>
+            <form id="create-list-form">
+                <div class="form-group">
+                    <label for="list-name">List Name:</label>
+                    <input type="text" id="list-name" placeholder="e.g., Go Web Frameworks" required>
+                </div>
+                <div class="form-group">
+                    <label for="list-prompt">AI Classification Prompt:</label>
+                    <textarea id="list-prompt" rows="4" placeholder="e.g., All Go projects for building web applications" required></textarea>
+                </div>
+                <button type="submit" class="btn">Create List</button>
+            </form>
         </div>
     </div>
+
     <script src="script.js"></script>
 </body>
 </html>

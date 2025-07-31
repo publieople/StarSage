@@ -26,6 +26,15 @@ type Repository struct {
 	LastSyncedAt    string
 }
 
+// List represents a user-created list of repositories.
+type List struct {
+	ID        int64
+	Name      string
+	Prompt    string
+	CreatedAt string
+	RepoCount int // For holding counts in joins
+}
+
 // InitDB initializes the SQLite database and creates tables if they don't exist.
 func InitDB() (*sql.DB, error) {
 	home, err := os.UserHomeDir()
@@ -90,6 +99,24 @@ func createTables(db *sql.DB) error {
 	END;
 	`
 
+	// Tables for AI-managed lists
+	const createListsTableSQL = `
+	CREATE TABLE IF NOT EXISTS lists (
+		id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+		name TEXT NOT NULL UNIQUE,
+		prompt TEXT,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	);`
+
+	const createListReposTableSQL = `
+	CREATE TABLE IF NOT EXISTS list_repositories (
+		list_id INTEGER NOT NULL,
+		repository_id INTEGER NOT NULL,
+		PRIMARY KEY (list_id, repository_id),
+		FOREIGN KEY (list_id) REFERENCES lists(id) ON DELETE CASCADE,
+		FOREIGN KEY (repository_id) REFERENCES repositories(id) ON DELETE CASCADE
+	);`
+
 	tx, err := db.Begin()
 	if err != nil {
 		return err
@@ -103,6 +130,12 @@ func createTables(db *sql.DB) error {
 		return err
 	}
 	if _, err := tx.Exec(createTriggersSQL); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(createListsTableSQL); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(createListReposTableSQL); err != nil {
 		return err
 	}
 
@@ -313,5 +346,100 @@ func SearchRepositories(db *sql.DB, query string, limit int) ([]Repository, erro
 		repos = append(repos, repo)
 	}
 
+	return repos, nil
+}
+
+// CreateList creates a new list and returns its ID.
+func CreateList(db *sql.DB, name, prompt string) (int64, error) {
+	res, err := db.Exec("INSERT INTO lists (name, prompt) VALUES (?, ?)", name, prompt)
+	if err != nil {
+		return 0, fmt.Errorf("could not insert list: %w", err)
+	}
+	return res.LastInsertId()
+}
+
+// AddReposToList adds multiple repositories to a list.
+func AddReposToList(db *sql.DB, listID int64, repoIDs []int64) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("could not begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.Prepare("INSERT INTO list_repositories (list_id, repository_id) VALUES (?, ?)")
+	if err != nil {
+		return fmt.Errorf("could not prepare statement: %w", err)
+	}
+	defer stmt.Close()
+
+	for _, repoID := range repoIDs {
+		if _, err := stmt.Exec(listID, repoID); err != nil {
+			return fmt.Errorf("could not add repo %d to list %d: %w", repoID, listID, err)
+		}
+	}
+
+	return tx.Commit()
+}
+
+// GetLists retrieves all lists with a count of repositories in each.
+func GetLists(db *sql.DB) ([]List, error) {
+	query := `
+		SELECT l.id, l.name, l.prompt, l.created_at, COUNT(lr.repository_id) as repo_count
+		FROM lists l
+		LEFT JOIN list_repositories lr ON l.id = lr.list_id
+		GROUP BY l.id
+		ORDER BY l.name;
+	`
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("could not query lists: %w", err)
+	}
+	defer rows.Close()
+
+	var lists []List
+	for rows.Next() {
+		var l List
+		if err := rows.Scan(&l.ID, &l.Name, &l.Prompt, &l.CreatedAt, &l.RepoCount); err != nil {
+			return nil, fmt.Errorf("could not scan list row: %w", err)
+		}
+		lists = append(lists, l)
+	}
+	return lists, nil
+}
+
+// GetReposByListID retrieves all repositories for a given list ID.
+func GetReposByListID(db *sql.DB, listID int64) ([]Repository, error) {
+	query := `
+		SELECT r.id, r.full_name, r.description, r.url, r.language, r.stargazers_count, r.summary
+		FROM repositories r
+		JOIN list_repositories lr ON r.id = lr.repository_id
+		WHERE lr.list_id = ?
+		ORDER BY r.stargazers_count DESC;
+	`
+	rows, err := db.Query(query, listID)
+	if err != nil {
+		return nil, fmt.Errorf("could not query repos by list ID: %w", err)
+	}
+	defer rows.Close()
+
+	var repos []Repository
+	for rows.Next() {
+		var repo Repository
+		var desc, summary sql.NullString
+		if err := rows.Scan(
+			&repo.ID,
+			&repo.FullName,
+			&desc,
+			&repo.URL,
+			&repo.Language,
+			&repo.StargazersCount,
+			&summary,
+		); err != nil {
+			return nil, fmt.Errorf("could not scan repo row for list: %w", err)
+		}
+		repo.Description = desc.String
+		repo.Summary = summary.String
+		repos = append(repos, repo)
+	}
 	return repos, nil
 }

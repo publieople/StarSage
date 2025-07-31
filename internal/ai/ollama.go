@@ -43,10 +43,8 @@ type ollamaGenerateResponse struct {
 	Done     bool   `json:"done"`
 }
 
-// Summarize sends the content to the Ollama API and returns the summary.
-func (p *OllamaProvider) Summarize(ctx context.Context, content string) (string, error) {
-	prompt := fmt.Sprintf("Please provide a concise summary of the following project's README, focusing on its purpose and key features. Output only the summary text:\n\n---\n\n%s", content)
-
+// Generate sends a prompt to the Ollama API and returns the response.
+func (p *OllamaProvider) Generate(ctx context.Context, prompt string) (string, error) {
 	reqBody, err := json.Marshal(ollamaGenerateRequest{
 		Model:  p.model,
 		Prompt: prompt,

@@ -72,7 +72,10 @@ and saves the summary back to the database.`,
 				continue
 			}
 
-			summary, err := provider.Summarize(context.Background(), repo.ReadmeContent)
+			// Build the prompt manually now that the provider is generic
+			prompt := fmt.Sprintf("Please provide a concise summary of the following project's README, focusing on its purpose and key features. Output only the summary text:\n\n---\n\n%s", repo.ReadmeContent)
+
+			summary, err := provider.Generate(context.Background(), prompt)
 			if err != nil {
 				fmt.Printf("Error summarizing %s: %v\n", repo.FullName, err)
 				continue // Move to the next repo

@@ -4,6 +4,6 @@ import "context"
 
 // Provider is the interface that all AI providers must implement.
 type Provider interface {
-	// Summarize takes a string of content (e.g., a README) and returns a summary.
-	Summarize(ctx context.Context, content string) (string, error)
+	// Generate takes a prompt and returns a text-based response from the AI model.
+	Generate(ctx context.Context, prompt string) (string, error)
 }
