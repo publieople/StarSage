@@ -1,25 +1,29 @@
 body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    background-color: #f6f8fa;
-    color: #24292e;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: linear-gradient(135deg, #23272f 0%, #181a20 100%);
+    color: #e3e6ea;
     margin: 0;
     padding: 20px;
+    min-height: 100vh;
 }
 
 .container {
     max-width: 800px;
     margin: 0 auto;
-    background-color: #fff;
-    border: 1px solid #d1d5da;
-    border-radius: 6px;
-    padding: 20px;
+    background: rgba(36, 41, 46, 0.95);
+    border: 1px solid #23272f;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 4px 32px rgba(0,0,0,0.18);
 }
 
 h1 {
-    font-size: 24px;
+    font-size: 28px;
     margin-bottom: 20px;
-    border-bottom: 1px solid #e1e4e8;
+    border-bottom: 1px solid #23272f;
     padding-bottom: 10px;
+    color: #e3e6ea;
+    letter-spacing: 1px;
 }
 
 .search-container {
@@ -28,76 +32,100 @@ h1 {
 
 #search-box {
     width: 100%;
-    padding: 10px;
+    padding: 12px;
     font-size: 16px;
-    border: 1px solid #d1d5da;
-    border-radius: 6px;
+    border: 1px solid #444c56;
+    border-radius: 8px;
+    background: #23272f;
+    color: #e3e6ea;
+    outline: none;
+    transition: border-color 0.2s;
+}
+#search-box:focus {
+    border-color: #2ea44f;
 }
 
 .repo-list {
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 18px;
 }
 
 .repo-item {
-    border: 1px solid #e1e4e8;
-    border-radius: 6px;
-    padding: 15px;
+    border: 1px solid #444c56;
+    border-radius: 10px;
+    padding: 20px;
+    background: linear-gradient(135deg, #23272f 60%, #181a20 100%);
+    box-shadow: 0 2px 12px rgba(36,41,46,0.12);
+    transition: box-shadow 0.2s, transform 0.2s;
+    position: relative;
+}
+.repo-item:hover {
+    box-shadow: 0 6px 24px rgba(36,41,46,0.22);
+    transform: translateY(-2px) scale(1.01);
 }
 
 .repo-item h2 {
-    font-size: 20px;
+    font-size: 22px;
     margin: 0 0 10px;
+    color: #e3e6ea;
 }
 
 .repo-item a {
     text-decoration: none;
-    color: #0366d6;
+    color: #58a6ff;
+    transition: color 0.2s;
+}
+.repo-item a:hover {
+    color: #2ea44f;
 }
 
 .repo-item p {
     margin: 5px 0;
-    color: #586069;
+    color: #b1b5bb;
 }
 
 .repo-item .language {
-    font-size: 12px;
-    color: #586069;
+    font-size: 13px;
+    color: #7ee787;
+    font-weight: 500;
 }
 
 /* Header and Navigation */
 header {
-    background-color: #24292e;
-    padding: 10px 0;
-    margin-bottom: 20px;
+    background: linear-gradient(90deg, #181a20 0%, #23272f 100%);
+    padding: 10px 0 0 0;
+    margin-bottom: 24px;
+    box-shadow: 0 2px 8px rgba(36,41,46,0.12);
 }
 
 header .container {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background-color: transparent;
+    background: transparent;
     border: none;
-    padding: 0 20px;
+    padding: 0 24px;
 }
 
 header h1 {
-    color: #fff;
+    color: #e3e6ea;
     margin: 0;
     border: none;
-    font-size: 22px;
+    font-size: 24px;
 }
 
 nav a {
-    color: #fff;
+    color: #e3e6ea;
     text-decoration: none;
-    padding: 10px 15px;
-    border-radius: 6px;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: background 0.2s, color 0.2s;
 }
-
 nav a.active, nav a:hover {
-    background-color: #444c56;
+    background: #2ea44f;
+    color: #181a20;
 }
 
 /* Utility Classes */
@@ -106,18 +134,20 @@ nav a.active, nav a:hover {
 }
 
 .btn {
-    background-color: #2ea44f;
-    color: white;
-    padding: 10px 15px;
+    background: linear-gradient(90deg, #2ea44f 0%, #22863a 100%);
+    color: #fff;
+    padding: 10px 18px;
     border: none;
-    border-radius: 6px;
-    font-size: 14px;
+    border-radius: 8px;
+    font-size: 15px;
     cursor: pointer;
-    transition: background-color 0.2s;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(46,164,79,0.12);
+    transition: background 0.2s, box-shadow 0.2s;
 }
-
 .btn:hover {
-    background-color: #2c974b;
+    background: linear-gradient(90deg, #22863a 0%, #2ea44f 100%);
+    box-shadow: 0 4px 16px rgba(46,164,79,0.18);
 }
 
 /* List View Specifics */
@@ -130,6 +160,7 @@ nav a.active, nav a:hover {
 
 .list-header h2 {
     margin: 0;
+    color: #e3e6ea;
 }
 
 /* Modal Styles */
@@ -138,38 +169,40 @@ nav a.active, nav a:hover {
     z-index: 1000;
     left: 0;
     top: 0;
-    width: 100%;
-    height: 100%;
+    width: 100vw;
+    height: 100vh;
     overflow: auto;
-    background-color: rgba(0,0,0,0.5);
+    background: rgba(24,26,32,0.85);
     display: flex;
     justify-content: center;
     align-items: center;
 }
 
 .modal-content {
-    background-color: #fefefe;
-    padding: 20px;
-    border: 1px solid #888;
-    border-radius: 6px;
+    background: #23272f;
+    padding: 28px;
+    border: 1px solid #444c56;
+    border-radius: 12px;
     width: 80%;
-    max-width: 500px;
+    max-width: 480px;
     position: relative;
+    color: #e3e6ea;
+    box-shadow: 0 4px 32px rgba(0,0,0,0.22);
 }
 
 .close-btn {
-    color: #aaa;
+    color: #b1b5bb;
     position: absolute;
     top: 10px;
     right: 20px;
     font-size: 28px;
     font-weight: bold;
     cursor: pointer;
+    transition: color 0.2s;
 }
-
 .close-btn:hover,
 .close-btn:focus {
-    color: black;
+    color: #2ea44f;
 }
 
 .form-group {
@@ -178,15 +211,32 @@ nav a.active, nav a:hover {
 
 .form-group label {
     display: block;
-    margin-bottom: 5px;
+    margin-bottom: 6px;
+    color: #7ee787;
+    font-weight: 500;
 }
 
 .form-group input,
 .form-group textarea {
     width: 100%;
-    padding: 10px;
-    font-size: 14px;
-    border: 1px solid #d1d5da;
-    border-radius: 6px;
-    box-sizing: border-box; /* Important */
+    padding: 12px;
+    font-size: 15px;
+    border: 1px solid #444c56;
+    border-radius: 8px;
+    background: #181a20;
+    color: #e3e6ea;
+    box-sizing: border-box;
+    outline: none;
+    transition: border-color 0.2s;
+}
+.form-group input:focus,
+.form-group textarea:focus {
+    border-color: #2ea44f;
+}
+/* 响应式适配 */
+@media (max-width: 600px) {
+    .container { padding: 8px; }
+    h1 { font-size: 20px; }
+    .repo-item { padding: 10px; }
+    .modal-content { padding: 12px; }
 }
